@@ -1,0 +1,270 @@
+SHELL="/bin/sh"
+import EXT
+import HOST
+VHOME=`pwd`
+TIMESTAMP=`date "+%b %d %H:%M:%S"`
+#VERBOSE=9
+
+#--------------------------------------------------------
+#  mailfilter
+#  
+#  Path to this file should be /etc/mail/mailfilter
+#  chown vpopmail:vchkpw  chmod 600
+#
+#
+#  This file was adapted from Matt Simerson's work
+#  http://www.tnpi.biz/internet/mail/toaster/
+#
+#  Nick Hemmesch <nick@ndhsoft.com>
+#  August 23, 2005
+#
+#--------------------------------------------------------
+
+logfile "/var/log/maildrop/maildrop.log"
+log "$TIMESTAMP - BEGIN maildrop processing for $EXT@$HOST ==="
+
+#--------------------------------------------------------
+# Include any rules set up for the user - this gives the 
+# administrator a way to override the sitewide mailfilter file
+#--------------------------------------------------------
+
+`test -r $VHOME/.mailfilter`
+if($RETURNCODE == 0)
+{
+	log "including $VHOME/.mailfilter"
+	exception {
+		include $VHOME/.mailfilter
+	}
+}
+
+
+#--------------------------------------------------------
+# Create the maildirsize file if it doesn't already exist
+#--------------------------------------------------------
+###########################################################################
+# More checking was added to this....
+# I believe I could use lex/yacc to build a better and more forgiving parser
+# than this one.
+###########################################################################
+
+# does maildirsize exist?
+`test -e $VHOME/Maildir/maildirsize`
+
+# if maildirsize doesn't exist
+if($RETURNCODE == 1)
+{ 
+
+	# does vuserinfo exist?
+	`test -x /home/vpopmail/bin/vuserinfo` 
+
+	# if vuserinfo exists
+	if($RETURNCODE == 0)
+	{ 
+		# does the user exist?
+		`/home/vpopmail/bin/vuserinfo $EXT@$HOST`
+		if($RETURNCODE == 0)
+		{
+
+			# find out what the user's quota is
+			$QUOTA=`/home/vpopmail/bin/vuserinfo -Q $EXT@$HOST`
+			log "QUOTA = $QUOTA"
+
+			# does maildirmake exists?
+			`test -x /usr/bin/maildirmake`
+
+			# if maildirmake exists
+			if($RETURNCODE == 0)
+			{
+
+				# does Maildir exist?
+				`test -d $VHOME/Maildir`
+
+				# if Maildir exists
+				if($RETURNCODE == 0)
+				{
+
+					# make the maildirsize file
+					`/usr/bin/maildirmake -q $QUOTA $VHOME/Maildir`
+					`test -s "$VHOME/Maildir/maildirsize"`
+
+					# if maildirsize exists
+   					if($RETURNCODE == 0)
+					{
+     					`/bin/chown vpopmail:vchkpw $VHOME/Maildir/maildirsize`
+						`/bin/chmod 640 $VHOME/Maildir/maildirsize`
+
+					# else 
+   					}
+					else
+					{
+						log "Problem making 'maildirsize' for $VHOME"
+					}
+
+					# end if maildirsize exists
+				}
+				else
+				{
+					log "Maildir does not exist for $VHOME"
+				}
+
+				# end if Maildir exists
+			}
+			else
+			{
+				log "maildirmake does not exist"
+
+			# end if maildirmake exists
+			}
+		}
+		else
+		{
+			log "user $EXT@HOST does not exist"
+
+		# end if user exists
+		}
+	}
+	else
+	{
+		log "vuserinfo does not exist"
+
+	# end if vuserinfo exists
+	}
+}
+# does maildirsize exist?
+`test -e $VHOME/Maildir/maildirsize`
+if($RETURNCODE == 0)
+{
+	MAILDIRQUOTA=`/usr/bin/head -n1 $VHOME/Maildir/maildirsize`
+	log "MAILDIRQUOTA = $MAILDIRQUOTA"
+}
+
+
+#--------------------------------------------------------
+# Filter spam - scores >= SPAMLIMIT is not delivered
+#
+# If you DO NOT want to send mail that is over the spam limit
+# to spamassassin autolearn, comment: 'cc "|sa-learn -spam"'
+#--------------------------------------------------------
+
+##########################################################################
+# Below is where I found some of the main problem, i.e apparently the
+# regex logic changed, do a diff against this one and the old one,
+# the old one was delimited with the '!' (bang) and grouped as a whole.
+# it failed the match always.  By using standard regex grouping, I was able
+# to get the filter working. By grouping the score accordingly, it
+# breaks it into a number and precision, e.g. MATCH1 and MATCH2
+##########################################################################
+
+if(/^X-Spam-Status: Yes, score=([0-9]+)\.([0-9]+)/:h)
+{
+	if($MATCH1 >= 5)
+	{
+		cc "|sa-learn --spam"
+	}
+
+	# if the user doesnt' have a Spam folder
+	`test -d $VHOME/Maildir/.Spam`
+	if($RETURNCODE == 1)
+	{
+		`test -x /usr/bin/maildirmake`
+		if($RETURNCODE == 0)
+		{
+			`/usr/bin/maildirmake -f Spam $VHOME/Maildir`
+			`test -x /usr/bin/subscribeIMAP.sh`
+			if($RETURNCODE == 0)
+			{
+				`/usr/bin/subscribeIMAP.sh Spam $VHOME`
+			}
+		}
+	}
+
+	# make sure the deliverquota binary exists and is executable
+	`test -x /usr/bin/deliverquota`
+	if($RETURNCODE == 1)
+	{
+		exception {
+			to "$VHOME/Maildir/.Spam"
+		}
+	}
+	else
+	{
+		cc "|/usr/bin/deliverquota -w 90 $VHOME/Maildir/.Spam"
+		if($RETURNCODE == 0)
+		{
+			log "=== END ===  $EXT@$HOST  success (quota)"
+			EXITCODE=0
+			exit
+		}
+		else
+		{
+			if($RETURNCODE == 77)
+			{
+				log "$TIMESTAMP - $EXT@$HOST  bounced (quota)"
+				to "|/var/qmail/bin/bouncesaying '$EXT@$HOST is over quota'"
+			}
+			else
+			{
+				log \
+				 "$TIMESTAMP - $EXT@$HOST failure (unknown deliverquota error)"
+				to "$VHOME/Maildir/.Spam"
+			}
+		}
+	}
+}
+
+##########################################################################
+# Same as above
+##########################################################################
+if(/^X-Spam-Status: No, score=([\-]*[0-9]+)\.([0-9]+) /:h)
+{
+	log "   message is clean ($MATCH1.$MATCH2)"
+}
+
+
+#--------------------------------------------------------
+# Include any user rules 
+#--------------------------------------------------------
+
+`test -r $VHOME/Maildir/.mailfilter`
+if($RETURNCODE == 0)
+{
+	log "   including $VHOME/Maildir/.mailfilter"
+	exception {
+		include $VHOME/Maildir/.mailfilter
+	}
+}
+
+`test -x /usr/bin/deliverquota`
+if ($RETURNCODE == 1)
+{
+	log "$TIMESTAMP - $EXT@$HOST WARNING: no deliverquota!"
+	log "=== END ===  $EXT@$HOST success"
+	exception {
+		to "$VHOME/Maildir"
+	}
+}
+else
+{
+	exception {
+		log "RETCODE = $RETURNCODE   delivering to $VHOME/Maildir"
+		xfilter "/usr/bin/deliverquota -w 90 $VHOME/Maildir"
+	}
+	#--------------------------------------------------------
+	# check to make sure the message was delivered
+	# returncode 77 means that out maildir was overquota - bounce mail
+	#--------------------------------------------------------
+	if($RETURNCODE == 77)
+	{
+		log "$TIMESTAMP - BOUNCED: bouncesaying '$EXT@$HOST is over quota'"
+		log "$TIMESTAMP - $EXT@$HOST  bounced"
+		to "|/var/qmail/bin/bouncesaying '$EXT@$HOST is over quota'"
+	}
+	else
+	{
+		log "=== END ===  $EXT@$HOST  success (quota)"
+		EXITCODE=0
+		exit
+	}
+}
+
+log "$TIMESTAMP - $EXT@$HOST - WARNING: This message should never be printed!"
