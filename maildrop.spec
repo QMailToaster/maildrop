@@ -106,8 +106,8 @@ cp %{buildroot}%{_datadir}/maildrop/html/* htmldoc
 
 mkdir -p %{buildroot}%{_localstatedir}/log/maildrop
 
-install -D mailfilter        %{buildroot}%{_sysconfdir}/mail/mailfilter
-install    subscribeIMAP.sh  %{buildroot}%{_bindir}/subscribeIMAP.sh
+install -D %{SOURCE1}  %{buildroot}%{_sysconfdir}/mail/mailfilter
+install    %{SOURCE2}  %{buildroot}%{_bindir}/subscribeIMAP.sh
 
 #-------------------------------------------------------------
 %clean
