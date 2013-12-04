@@ -11,6 +11,7 @@ Source2:	subscribeIMAP.sh
 BuildRequires:  pcre-devel
 BuildRequires:  libidn-devel
 Obsoletes:	maildrop-toaster
+Requires:	vpopmail
 BuildRoot:      %{_topdir}/BUILDROOT/%{name}-%{version}-%{release}.%{_arch}
 
 %define debug_package %{nil}
