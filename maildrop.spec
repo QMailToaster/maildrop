@@ -1,18 +1,20 @@
-Name:		maildrop
-Summary:	Maildrop mail filter/mail delivery agent
-Version:	2.7.0
-Release:	0%{?dist}
-License:	GPLv3
-Group:		System/Servers
-Url:		http://www.courier-mta.org/maildrop/
-Source0:	http://sourceforge.net/projects/courier/files/maildrop/2.7.0/%{name}-%{version}.tar.bz2
-Source1:	mailfilter
-Source2:	subscribeIMAP.sh
-BuildRequires:  pcre-devel
-BuildRequires:  libidn-devel
-Obsoletes:	maildrop-toaster
-Requires:	vpopmail
-BuildRoot:      %{_topdir}/BUILDROOT/%{name}-%{version}-%{release}.%{_arch}
+Name:      maildrop
+Summary:   Maildrop mail filter/mail delivery agent
+Version:   2.7.0
+Release:   0%{?dist}
+License:   GPLv3
+Group:     System/Servers
+Vendor:    QmailToaster
+Packager:  Eric Shubert <qmt-build@datamatters.us>
+Url:       http://www.courier-mta.org/maildrop/
+Source0:   http://sourceforge.net/projects/courier/files/maildrop/2.7.0/%{name}-%{version}.tar.bz2
+Source1:   mailfilter
+Source2:   subscribeIMAP.sh
+BuildRequires: pcre-devel
+BuildRequires: libidn-devel
+Obsoletes: maildrop-toaster
+Requires:  vpopmail
+BuildRoot: %{_topdir}/BUILDROOT/%{name}-%{version}-%{release}.%{_arch}
 
 %define debug_package %{nil}
 
