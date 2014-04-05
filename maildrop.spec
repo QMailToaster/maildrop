@@ -135,6 +135,7 @@ rm -rf %{buildroot}
 %attr(0755, root, root)          %{_bindir}/reformail
 %attr(0755, vpopmail, vchkpw)    %{_bindir}/subscribeIMAP.sh
 %attr(0600, vpopmail, vchkpw)    %{_sysconfdir}/mail/mailfilter
+%attr(0644, root, root)          %{_sysconfdir}/logrotate.d/maildrop
 
 %{_mandir}/man[1578]/*
 
