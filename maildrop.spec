@@ -9,7 +9,8 @@ Packager:  Eric Shubert <qmt-build@datamatters.us>
 Url:       http://www.courier-mta.org/maildrop/
 Source0:   http://sourceforge.net/projects/courier/files/maildrop/2.7.0/%{name}-%{version}.tar.bz2
 Source1:   mailfilter
-Source2:   subscribeIMAP.sh
+Source2:   maildrop.logrotate
+Source3:   subscribeIMAP.sh
 BuildRequires: pcre-devel
 BuildRequires: libidn-devel
 Obsoletes: maildrop-toaster
@@ -110,7 +111,8 @@ cp %{buildroot}%{_datadir}/maildrop/html/* htmldoc
 mkdir -p %{buildroot}%{_localstatedir}/log/maildrop
 
 install -Dp %{SOURCE1}  %{buildroot}%{_sysconfdir}/mail/mailfilter
-install     %{SOURCE2}  %{buildroot}%{_bindir}
+install -Dp %{SOURCE2}  %{buildroot}%{_sysconfdir}/logrotate.d/maildrop
+install     %{SOURCE3}  %{buildroot}%{_bindir}
 
 #-------------------------------------------------------------
 %clean

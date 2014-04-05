@@ -1,0 +1,11 @@
+#
+# Rotate maildrop's log file
+#
+
+/var/log/maildrop/maildrop.log {
+    missingok
+    nocompress
+    create 600 vpopmail vchkpw
+    postrotate
+    endscript
+}
